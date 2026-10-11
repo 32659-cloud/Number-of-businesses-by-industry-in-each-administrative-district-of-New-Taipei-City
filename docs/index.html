@@ -156,7 +156,7 @@ footer { color: var(--ink2); font-size: .82rem; }
   <p class="sub" id="subA"></p>
   <div class="legend"><span><i style="background:var(--bar-sel)"></i>目前選取的行業</span><span><i style="background:var(--bar)"></i>其他行業</span></div>
   <div id="chartA" class="chart"></div>
-  <p class="note">※ 該行業在新北市 29 區全部為 0 家，見下方「資料限制」。</p>
+  <p class="note" id="noteA"></p>
 </section>
 
 <section class="card">
@@ -175,7 +175,7 @@ footer { color: var(--ink2); font-size: .82rem; }
   <h2 id="titleC"></h2>
   <p class="sub" id="subC"></p>
   <div id="chartC" class="chart div"></div>
-  <p class="note">差距 = 該行業占該區總家數的比例 − 該行業占全市總家數的比例，單位為百分點（pp）。已排除全市為 0 的 3 個行業。</p>
+  <p class="note">差距 = 該行業占該區總家數的比例 − 該行業占全市總家數的比例，單位為百分點（pp）。同樣已省略全市為 0 家的行業。</p>
 </section>
 
 <section class="card">
@@ -198,8 +198,8 @@ footer { color: var(--ink2); font-size: .82rem; }
   <ul><li>民國 115 年 6 月（<code>11506</code>，即 2026 年 6 月）單月資料。本頁只有一個時間點，<b>不能判斷增減或趨勢</b>。</li></ul>
   <h2>資料限制</h2>
   <ul>
-    <li><b>3 個行業全市為 0：</b>「公共行政及國防；強制性社會安全」「醫療保健及社會工作服務業」「未分類」在 29 區都是 0。這些行業可能依其他法規登記而不在本資料的統計範圍，也可能是原始資料缺漏，本專案無法判斷，請勿解讀為新北市沒有這類單位。</li>
-    <li><b>統計口徑：</b>資料集說明只寫「各區域行業別家數」，未定義「家數」是登記數或營業中家數，也未說明是否包含公司登記。實際口徑以來源機關說明為準。</li>
+    <li><b>已省略的 3 個行業：</b>「公共行政及國防；強制性社會安全」「醫療保健及社會工作服務業」「未分類」在 29 區的家數都是 0，沒有可畫的內容，所以圖表和表格都省略了。原始檔與 <code>data/processed/</code> 仍保留這幾列。原因可能是這些行業不在這份資料的統計範圍，也可能是資料缺漏，本專案無法判斷，不代表新北市沒有這類單位。</li>
+    <li><b>「家數」怎麼算，來源沒有說：</b>例如有沒有包含已歇業的、有沒有包含公司行號。所以本頁只呈現來源給的數字，不拿它和其他機關的統計直接比較。</li>
     <li><b>「占比」與「集中度」是本專案的計算結果</b>，不是來源欄位；差距與集中度只描述結構差異，不代表好壞。</li>
     <li>行業別為 20 大類，無法看到更細的行業；原始資料沒有提供全市合計，因此合計值是由各區加總而得（見下方驗證）。</li>
     <li>名稱更正：原始的「電子及燃氣供應業」依行業標準分類更正為「電力及燃氣供應業」；「公共行政及國防;強制性社會安全」的半形分號改為全形。原始名稱保留在處理後檔案的 <code>industry_raw</code> 欄。</li>
@@ -224,6 +224,7 @@ footer { color: var(--ink2); font-size: .82rem; }
   var iTot = D.industries.map(function (_, i) { return M.reduce(function (a, r) { return a + r[i]; }, 0); });
   var TOTAL = D.total;
   var isZeroInd = function (i) { return iTot[i] === 0; };
+  var activeInd = D.industries.map(function (_, i) { return i; }).filter(function (i) { return !isZeroInd(i); });
 
   var state = { d: D.districts.indexOf("三重區"), i: D.industries.indexOf("製造業"), mode: "count" };
 
@@ -283,7 +284,7 @@ footer { color: var(--ink2); font-size: .82rem; }
   }
 
   function indOrder() {
-    return D.industries.map(function (_, i) { return i; }).sort(function (a, b) { return scopeVal(b) - scopeVal(a) || a - b; });
+    return activeInd.slice().sort(function (a, b) { return scopeVal(b) - scopeVal(a) || a - b; });
   }
 
   function renderKpis() {
@@ -301,7 +302,7 @@ footer { color: var(--ink2); font-size: .82rem; }
     $("titleA").textContent = scopeName() + "：各行業別家數";
     $("subA").textContent = "「" + D.industries[top] + "」最多，" + fmt(scopeVal(top)) + " 家，占" + (state.d < 0 ? "全市" : "該區") + " " + pct(scopeVal(top) / t * 100) + "%；其餘行業的家數都小得多，請看長條右側數字。";
     barChart($("chartA"), order.map(function (i) {
-      return { label: D.industries[i] + (isZeroInd(i) ? " ※" : ""), value: scopeVal(i), text: fmt(scopeVal(i)), sel: i === state.i, zero: isZeroInd(i),
+      return { label: D.industries[i], value: scopeVal(i), text: fmt(scopeVal(i)), sel: i === state.i, zero: isZeroInd(i),
         title: D.industries[i] + "：" + fmt(scopeVal(i)) + " 家（點選以切換行業）", onClick: function () { state.i = i; render(); } };
     }), { tickFmt: fmt, axisTitle: "家數（家）" });
   }
@@ -370,7 +371,7 @@ footer { color: var(--ink2); font-size: .82rem; }
         extra = z ? "<td>—</td><td>—</td><td class=\"hide-sm\">—</td>"
           : "<td>" + pct(r.city) + "</td><td>" + sgn(r.diff) + "</td><td class=\"hide-sm\">" + (r.lq === null ? "—" : r.lq.toFixed(2)) + "</td>";
       }
-      return "<tr class=\"" + (z ? "zero" : "") + "\"><td>" + D.industries[i] + (z ? " ※" : "") + "</td><td>" + fmt(scopeVal(i)) + "</td><td>" + pct(s) + "</td>" + extra + "</tr>";
+      return "<tr class=\"" + (z ? "zero" : "") + "\"><td>" + D.industries[i] + "</td><td>" + fmt(scopeVal(i)) + "</td><td>" + pct(s) + "</td>" + extra + "</tr>";
     }).join("");
     var cols = city ? 3 : 6;
     var foot = "<tr><th>合計</th><th>" + fmt(t) + "</th><th>100.0</th>" + (city ? "" : "<th></th><th></th><th class=\"hide-sm\"></th>") + "</tr>";
@@ -403,7 +404,8 @@ footer { color: var(--ink2); font-size: .82rem; }
 
   // 初始化選單
   $("selDistrict").innerHTML = '<option value="-1">新北市全市</option>' + D.districts.map(function (n, i) { return '<option value="' + i + '">' + n + "</option>"; }).join("");
-  $("selIndustry").innerHTML = D.industries.map(function (n, i) { return '<option value="' + i + '">' + n + (isZeroInd(i) ? " ※" : "") + "</option>"; }).join("");
+  $("selIndustry").innerHTML = activeInd.map(function (i) { return '<option value="' + i + '">' + D.industries[i] + "</option>"; }).join("");
+  $("noteA").textContent = "已省略 " + D.zero_industries.length + " 個全市為 0 家的行業：" + D.zero_industries.join("、") + "（見「資料限制」）。";
   $("selDistrict").addEventListener("change", function (e) { state.d = +e.target.value; render(); });
   $("selIndustry").addEventListener("change", function (e) { state.i = +e.target.value; render(); });
   $("modeCount").addEventListener("click", function () { state.mode = "count"; renderB(); });
